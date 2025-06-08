@@ -8,3 +8,6 @@ hal-venv
 
 # WAV output
 outputs
+
+# Environment
+.env

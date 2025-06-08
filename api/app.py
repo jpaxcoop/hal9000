@@ -14,6 +14,11 @@ from omegaconf import OmegaConf
 from hydra.utils import get_class
 import uuid
 
+import time
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
 origins = [
     "http://localhost:3000",
 ]
@@ -52,8 +57,38 @@ app.add_middleware(
     allow_headers=["*"],    # <-- allow all headers
 )
 
+@app.on_event("startup")
+async def warm_up_llm():
+    logging.info("Warming up LLM...")
+    dummy_prompt = """### Instruction:
+You are HAL 9000.
+PROMPT: Hello
+### Response:"""
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                LLM_SERVER_URL,
+                json={
+                    "prompt": dummy_prompt,
+                    "max_tokens": 10,
+                    "temperature": 0.1,
+                    "stop": ["###"]
+                },
+                timeout=30.0,
+            )
+            if response.status_code == 200:
+                logging.info("LLM warm-up complete.")
+            else:
+                logging.warning(f"LLM warm-up failed: {response.status_code}")
+    except Exception as e:
+        logging.warning(f"LLM warm-up error: {e}")
+
 @app.post("/generate")
 async def generate_tts(request: Request):
+    start_time = time.time()
+    logging.info("Start processing request")
+
     try:
         data = await request.json()
     except Exception as e:
@@ -62,16 +97,11 @@ async def generate_tts(request: Request):
     prompt = data.get("text")
     if not prompt:
         raise HTTPException(status_code=400, detail="Missing 'text' field")
-       
+
     instruction_template = f"""### Instruction:
-You are HAL 9000, the AI from *2001: A Space Odyssey*. You speak in a calm, eerily polite tone.
+You are HAL 9000. Speak in a calm, eerily polite tone.
 Do not express emotion unless it is concern.
-You must:
-- Respond to the prompt directly.
-- Never include or invent follow-up questions.
-- Never restate the prompt.
-- Never begin your answer with punctuation like a question mark.
-- Limit your response to 2 concise, slightly unsettling sentences.
+Limit your response to just 2 concise, slightly unsettling sentences.
 
 PROMPT: {prompt}
 
@@ -79,16 +109,18 @@ PROMPT: {prompt}
 
     # Send prompt to local LLaMA server
     async with httpx.AsyncClient() as client:
+        t1 = time.time()
         try:
             llm_response = await client.post(
                 LLM_SERVER_URL,
                 json={
                     "prompt": instruction_template,
-                    "max_tokens": 192,
-                    "temperature": 0.7,
+                    "max_tokens": 72,
+                    "temperature": 0.5,
+                    "top_p": 0.8,
                     "stop": ["### Instruction:", "PROMPT:", "### Response:"]
                 },
-                timeout=60.0,
+                timeout=20.0,
             )
             llm_response.raise_for_status()
             result = llm_response.json()
@@ -98,7 +130,10 @@ PROMPT: {prompt}
                 raise HTTPException(status_code=500, detail="No generated content from LLM")
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"LLM request failed: {e}")
+    t2 = time.time()
+    logging.info(f"Mistral LLM time: {t2 - t1:.2f}s")
 
+    t3 = time.time()
     # Generate speech from LLM response text
     try:
         audio, sample_rate, _ = infer_process(
@@ -114,6 +149,10 @@ PROMPT: {prompt}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"TTS generation failed: {e}")
 
+    t4 = time.time()
+    logging.info(f"TTS generation time: {t4 - t3:.2f}s")
+
+    t5 = time.time()
     # Save output WAV
     audio_filename = f"output_{uuid.uuid4().hex}.wav"
     audio_path = os.path.join(OUTPUT_DIR, audio_filename)
@@ -122,6 +161,10 @@ PROMPT: {prompt}
     # Build absolute URL
     base_url = str(request.base_url)  # e.g. "http://localhost:8000/"
     absolute_audio_url = base_url + f"audio/{audio_filename}"
+    t6 = time.time()
+    logging.info(f"File storage time: {t6 - t5:.2f}s")
+    total_time = time.time() - start_time
+    logging.info(f"Total request time: {total_time:.2f}s")
 
     return {
         "text": generated_content,  # already parsed from llm_response.json()
