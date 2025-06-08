@@ -1,0 +1,10 @@
+# Igmore models
+llm
+voice-model
+
+# Python dependencies
+__pycache__/
+hal-venv
+
+# WAV output
+outputs

@@ -1,0 +1,5 @@
+fastapi
+soundfile
+f5_tts
+omegaconf
+uvicorn
