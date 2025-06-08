@@ -14,8 +14,16 @@ from omegaconf import OmegaConf
 from hydra.utils import get_class
 import uuid
 
+from dotenv import load_dotenv
+
 import time
 import logging
+
+load_dotenv()
+
+LLM_MODE = os.getenv("LLM_MODE", "local")
+VOICE_MODEL_PATH = os.getenv("VOICE_MODEL_PATH", "models/voice_clone.pth")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 logging.basicConfig(level=logging.INFO)
 
@@ -59,6 +67,10 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def warm_up_llm():
+    if LLM_MODE != "local":
+        logging.info("LLM warm-up skipped (mode: %s)", LLM_MODE)
+        return
+
     logging.info("Warming up LLM...")
     dummy_prompt = """### Instruction:
 You are HAL 9000.
@@ -108,28 +120,57 @@ PROMPT: {prompt}
 ### Response:"""
 
     # Send prompt to local LLaMA server
-    async with httpx.AsyncClient() as client:
-        t1 = time.time()
-        try:
-            llm_response = await client.post(
-                LLM_SERVER_URL,
-                json={
-                    "prompt": instruction_template,
-                    "max_tokens": 72,
-                    "temperature": 0.5,
-                    "top_p": 0.8,
-                    "stop": ["### Instruction:", "PROMPT:", "### Response:"]
-                },
-                timeout=20.0,
-            )
-            llm_response.raise_for_status()
-            result = llm_response.json()
-            generated_content = result.get("content")
-            generated_content = generated_content.strip().split("###")[0].strip()
-            if not generated_content:
-                raise HTTPException(status_code=500, detail="No generated content from LLM")
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"LLM request failed: {e}")
+    t1 = time.time()
+    if LLM_MODE == "local":
+        async with httpx.AsyncClient() as client:
+            try:
+                llm_response = await client.post(
+                    LLM_SERVER_URL,
+                    json={
+                        "prompt": instruction_template,
+                        "max_tokens": 72,
+                        "temperature": 0.5,
+                        "top_p": 0.8,
+                        "stop": ["### Instruction:", "PROMPT:", "### Response:"]
+                    },
+                    timeout=20.0,
+                )
+                llm_response.raise_for_status()
+                result = llm_response.json()
+                generated_content = result.get("content", "").strip().split("###")[0].strip()
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"LLM request failed: {e}")
+    elif LLM_MODE == "openai":
+        if not OPENAI_API_KEY:
+            raise HTTPException(status_code=500, detail="Missing OpenAI API key")
+        
+        async with httpx.AsyncClient() as client:
+            try:
+                openai_response = await client.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {OPENAI_API_KEY}"
+                    },
+                    json={
+                        "model": "gpt-3.5-turbo",
+                        "messages": [
+                            {"role": "system", "content": "You are HAL 9000. Speak in a calm, eerily polite tone."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        "temperature": 0.5,
+                        "top_p": 0.8,
+                        "max_tokens": 72
+                    },
+                    timeout=20.0
+                )
+                openai_response.raise_for_status()
+                result = openai_response.json()
+                generated_content = result["choices"][0]["message"]["content"].strip()
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"OpenAI request failed: {e}")
+    else:
+        raise HTTPException(status_code=500, detail=f"Invalid LLM_MODE: {LLM_MODE}")
+
     t2 = time.time()
     logging.info(f"Mistral LLM time: {t2 - t1:.2f}s")
 
