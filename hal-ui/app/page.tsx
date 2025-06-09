@@ -20,6 +20,8 @@ export default function Page() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000';
+
   useEffect(() => {
     audioRef.current = new Audio();
 
@@ -53,7 +55,7 @@ export default function Page() {
     ]);
 
     try {
-      const response = await fetch('http://localhost:8000/generate', {
+      const response = await fetch(`${apiBaseUrl}/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: userText }),

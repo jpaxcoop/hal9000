@@ -19,33 +19,35 @@ from dotenv import load_dotenv
 import time
 import logging
 
-load_dotenv()
 
-LLM_MODE = os.getenv("LLM_MODE", "local")
-VOICE_MODEL_PATH = os.getenv("VOICE_MODEL_PATH", "models/voice_clone.pth")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 logging.basicConfig(level=logging.INFO)
-
-origins = [
-    "http://localhost:3000",
-]
+load_dotenv()
 
 # --------- Config ---------
 
-LLM_SERVER_URL = "http://localhost:8080/completions"  # llama-server API endpoint
+LLM_MODE = os.getenv("LLM_MODE", "local")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+FRONT_END_URL = os.getenv("NEXT_PUBLIC_FRONTEND_URL", "http://localhost:3000")
+API_BASE_URL = os.getenv("NEXT_PUBLIC_API_BASE_URL", "http://localhost:8080")
+VOICE_MODEL_PATH = os.getenv("VOICE_MODEL_PATH", "models/voice_clone.pth")
+MODEL_NAME = os.getenv("MODEL_NAME", "E2TTS_Base")
+CHECKPOINT_PATH = os.getenv("CHECKPOINT_PATH", "voice-model/model_50_pruned.safetensors")
+MODEL_CFG_PATH = os.getenv("MODEL_CFG_PATH", "voice-model/E2TTS_Base.yaml")
+VOCAB_PATH = os.getenv("VOCAB_PATH", "")
+REF_AUDIO_PATH = os.getenv("REF_AUDIO_PATH", "voice-model/samples/5.wav")
+REF_TEXT = os.getenv("REF_TEXT", "None whatsoever, Frank. The 9000 series has a perfect operational record.")
 
-MODEL_NAME = "E2TTS_Base"
-CHECKPOINT_PATH = "voice-model/model_50_pruned.safetensors"
-MODEL_CFG_PATH = "voice-model/E2TTS_Base.yaml"
-VOCAB_PATH = ""
-REF_AUDIO_PATH = "voice-model/samples/5.wav"
-REF_TEXT = "None whatsoever, Frank. The 9000 series has a perfect operational record."
+LLM_SERVER_URL = f"{API_BASE_URL}/completions"
 
 OUTPUT_DIR = "outputs"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # --------- Init ---------
+
+origins = [
+    FRONT_END_URL,
+]
 
 model_cfg = OmegaConf.load(MODEL_CFG_PATH)
 model_cls = get_class(f"f5_tts.model.{model_cfg.model.backbone}")
