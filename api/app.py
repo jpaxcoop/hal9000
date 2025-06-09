@@ -131,7 +131,7 @@ PROMPT: {prompt}
                     json={
                         "prompt": instruction_template,
                         "max_tokens": 72,
-                        "temperature": 0.5,
+                        "temperature": 0.7,
                         "top_p": 0.8,
                         "stop": ["### Instruction:", "PROMPT:", "### Response:"]
                     },
