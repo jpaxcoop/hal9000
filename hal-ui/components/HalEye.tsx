@@ -17,7 +17,7 @@ export default function HalEye() {
                 <div className="absolute h-[3%] rounded-full aspect-square bg-radial from-white to-transparent top-[38%] left-[40%]"></div>
                 <div className="absolute h-[2%] w-[8%] rounded-full aspect-square bg-radial from-white to-transparent top-[8%] left-[25%] rotate-153"></div>
                 <div className="absolute h-[2%] w-[8%] rounded-full aspect-square opacity-90 bg-radial from-white to-transparent bottom-[8%] right-[25%] rotate-153"></div>
-                <div className="rounded-full aspect-square bg-linear-to-t from-rose-900 via-rose-600 to-rose-300 h-[6%]"></div>
+                <div className="rounded-full aspect-square bg-radial from-white via-yellow-400 to-yellow-500 h-[6%] shadow-[0_0_2vw_1vw] shadow-rose-600"></div>
               </div>
             </div>
           </div>
