@@ -174,7 +174,7 @@ PROMPT: {prompt}
         raise HTTPException(status_code=500, detail=f"Invalid LLM_MODE: {LLM_MODE}")
 
     t2 = time.time()
-    logging.info(f"Mistral LLM time: {t2 - t1:.2f}s")
+    logging.info(f"LLM time: {t2 - t1:.2f}s")
 
     t3 = time.time()
     # Generate speech from LLM response text

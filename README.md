@@ -8,7 +8,7 @@ You can skip this step if NOT training a voice model.
 
 ### Create Python virtual environment, activate it, and install dependencies
 ```bash
-python -m venv hal-cenv
+python -m venv hal-venv
 source hal-venv/Scripts/activate
 pip install -e .
 ```
@@ -48,7 +48,7 @@ Rename `.env.example` to `.env`. Choose to use a locally hosted LLM or the OpenA
 ### Download an LLM model from Hugging Face
 You can skip this step if you are using the OpenAI API.
 
-Recommended: https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF/blob/main/mistral-7b-instruct-v0.2.Q5_K_S.gguf
+Recommended: https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF/blob/main/mistral-7b-instruct-v0.2.Q2_K.gguf
 
 ### Install Llama (https://github.com/ggml-org/llama.cpp?utm_source=chatgpt.com)
 Allows you to prompt your LLM model.
@@ -65,19 +65,7 @@ Move your LLM model into a new folder `llm/models`
 In a Command Prompt:
 ```cmd
 cd llm
-llama-server.exe --model models/mistral-7b-instruct-v0.2.Q5_K_S.gguf --port 8080
-```
-
-or with optimizing parameters:
-```cmd
-cd llm
-llama-server.exe ^
-  --model models/mistral-7b-instruct-v0.2.Q5_K_S.gguf ^
-  --port 8080 ^
-  --threads 8 ^
-  --ctx-size 2048 ^
-  --n-predict 192 ^
-  --mlock
+llama-server.exe --model models/mistral-7b-instruct-v0.2.Q2_K.gguf --port 8080
 ```
 
 ### Start FastAPI
